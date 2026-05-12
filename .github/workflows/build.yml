@@ -1,4 +1,4 @@
-name: Build Chrome Extension
+name: 构建 Chrome 扩展
 
 on:
   push:
@@ -36,7 +36,47 @@ jobs:
           name: VueCrack-v${{ steps.version.outputs.version }}
           path: VueCrack-v${{ steps.version.outputs.version }}.crx
 
-  release:
+  release_main:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Get version from manifest
+        id: version
+        run: echo "version=$(grep -oP '"version":\s*\"\K[^\"]+' manifest.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Pack .crx
+        run: |
+          npm install -g crx
+          echo "${{ secrets.CRX_PRIVATE_KEY }}" > key.pem
+          crx pack . -o VueCrack-main-v${{ steps.version.outputs.version }}.crx -p key.pem
+          rm key.pem
+
+      - name: 创建主线快照发布
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest-main
+          target_commitish: ${{ github.sha }}
+          name: 主线快照
+          body: |
+            基于 `main` 分支自动生成的快照版本。
+            提交：${{ github.sha }}
+            版本：${{ steps.version.outputs.version }}
+          prerelease: true
+          make_latest: false
+          files: VueCrack-main-v${{ steps.version.outputs.version }}.crx
+
+  release_tag:
     needs: build
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
@@ -62,8 +102,9 @@ jobs:
           crx pack . -o VueCrack-v${{ steps.version.outputs.version }}.crx -p key.pem
           rm key.pem
 
-      - name: Create Release
+      - name: 创建正式发布
         uses: softprops/action-gh-release@v2
         with:
+          name: VueCrack 正式版 v${{ steps.version.outputs.version }}
           files: VueCrack-v${{ steps.version.outputs.version }}.crx
           generate_release_notes: true
