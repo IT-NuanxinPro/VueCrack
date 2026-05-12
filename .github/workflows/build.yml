@@ -1,0 +1,69 @@
+name: Build Chrome Extension
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Get version from manifest
+        id: version
+        run: echo "version=$(grep -oP '"version":\s*"\K[^"]+' manifest.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Pack .crx
+        run: |
+          npm install -g crx
+          echo "${{ secrets.CRX_PRIVATE_KEY }}" > key.pem
+          crx pack . -o VueCrack-v${{ steps.version.outputs.version }}.crx --key key.pem
+          rm key.pem
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VueCrack-v${{ steps.version.outputs.version }}
+          path: VueCrack-v${{ steps.version.outputs.version }}.crx
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Get version from manifest
+        id: version
+        run: echo "version=$(grep -oP '"version":\s*"\K[^"]+' manifest.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Pack .crx
+        run: |
+          npm install -g crx
+          echo "${{ secrets.CRX_PRIVATE_KEY }}" > key.pem
+          crx pack . -o VueCrack-v${{ steps.version.outputs.version }}.crx --key key.pem
+          rm key.pem
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: VueCrack-v${{ steps.version.outputs.version }}.crx
+          generate_release_notes: true
