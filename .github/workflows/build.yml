@@ -27,7 +27,7 @@ jobs:
         run: |
           npm install -g crx
           echo "${{ secrets.CRX_PRIVATE_KEY }}" > key.pem
-          crx pack . -o VueCrack-v${{ steps.version.outputs.version }}.crx --key key.pem
+          crx pack . -o VueCrack-v${{ steps.version.outputs.version }}.crx -p key.pem
           rm key.pem
 
       - name: Upload artifact
@@ -59,7 +59,7 @@ jobs:
         run: |
           npm install -g crx
           echo "${{ secrets.CRX_PRIVATE_KEY }}" > key.pem
-          crx pack . -o VueCrack-v${{ steps.version.outputs.version }}.crx --key key.pem
+          crx pack . -o VueCrack-v${{ steps.version.outputs.version }}.crx -p key.pem
           rm key.pem
 
       - name: Create Release
